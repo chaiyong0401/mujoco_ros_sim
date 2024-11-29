@@ -1,9 +1,13 @@
 #include "mjros.h"
 #include <algorithm>
+// #include <GLFW/glfw3.h>
+#include <iostream>
+
 // custum function
 
 void c_reset()
 {
+    std::cout << "c_reset" <<std::endl;
     ros_sim_started = false;
     mj_resetData(m, d);
     int i = settings.key;
@@ -79,7 +83,8 @@ void jointset_callback(const mujoco_ros_msgs::JointSetConstPtr &msg)
         if (msg->MODE == 1)
         {
             if (joint_set_msg_.torque.size() == m->nu)
-            {
+            {   
+                std::cout <<"torque mode" <<std::endl;
                 for (int i = 0; i < m->nu; i++)
                     command[i] = msg->torque[i];
             }
@@ -92,6 +97,7 @@ void jointset_callback(const mujoco_ros_msgs::JointSetConstPtr &msg)
         {
             if (joint_set_msg_.torque.size() == m->nu)
             {
+                std::cout<<"position mode" <<std::endl;
                 for (int i = 0; i < m->nu; i++)
                     command[i] = msg->position[i];
             }
@@ -180,10 +186,205 @@ void NewCupPosCallback(const geometry_msgs::PointConstPtr &msg)
         m->body_pos[3*body_id+2] = msg->z;
         
     }
+    // else
+    // {
+    //     ROS_WARN("NO CUP POS");
+    // }
+
+}
+
+void NewCupPosmcyCallback(const geometry_msgs::PointConstPtr &msg)
+{
+ 
+
+    std::cout << "Number of bodies: " << m->nbody << std::endl;
+    std::cout << "Total external force elements: " << 6 * m->nbody << std::endl;
+
+    int plastic_cup_id = -1;
+    int plastic_cup2_id = -1;
+    plastic_cup_id = mj_name2id(m, mjOBJ_BODY, "plastic_cup");
+    plastic_cup2_id = mj_name2id(m, mjOBJ_BODY, "cup");
+    std::cout<<"Plastic Cup Callback"<<std::endl;
+    std::cout<<"plastic cup id: "<<plastic_cup_id << std::endl;
+    std::cout<<"plastic cup2 id: "<<plastic_cup2_id << std::endl;
+    
+    if (plastic_cup_id >= 0)
+    {
+        cup_x_ = msg->x;
+        cup_y_ = msg->y;
+        cup_z_ = msg->z;
+        
+        int geomIndex = m->body_geomadr[plastic_cup_id];
+        int geomIndex2 = m->body_geomadr[plastic_cup2_id];
+        int joint_id = m->body_jntadr[plastic_cup_id];
+
+        std::cout<< "MSG: " << msg->x <<"\t"<< msg->y<<"\t" << msg->z <<std::endl;
+        std::cout<< "Geom Index: " << geomIndex << std::endl;
+        std::cout<< "Geom2 Index: " << geomIndex2 << std::endl;
+        std::cout<< "joint_id: " <<joint_id <<std::endl;
+        
+        
+        std::cout << "Before Update qpos: "
+          << d->qpos[80] << ", "
+          << d->qpos[81] << ", "
+          << d->qpos[82] << ", "
+          << d->qpos[87] << ", "
+          << d->qpos[88] << ", "
+          << d->qpos[89] <<std::endl;
+
+        std::cout << "Before Update geom1: "
+        << d->geom_xpos[3*geomIndex] << ", "
+        << d->geom_xpos[3*geomIndex+1] << ", "
+        << d->geom_xpos[3*geomIndex+2] << ", "
+        << d->geom_xpos[3*geomIndex+3] << ", "
+        << d->geom_xpos[3*geomIndex+4] << ", "
+        << d->geom_xpos[3*geomIndex+5] <<std::endl;
+
+        std::cout << "Before Update geom2: "
+        << d->geom_xpos[3*geomIndex2] << ", "
+        << d->geom_xpos[3*geomIndex2+1] << ", "
+        << d->geom_xpos[3*geomIndex2+2] << ", "
+        << d->geom_xpos[3*geomIndex2+3] << ", "
+        << d->geom_xpos[3*geomIndex2+4] << ", "
+        << d->geom_xpos[3*geomIndex2+5] <<std::endl;
+        // change
+        d->qpos[80] = cup_x_;       // x
+        d->qpos[81] = cup_y_;   // y
+        d->qpos[82] = cup_z_;   // z
+        d->qvel[79] = 0;       // x
+        d->qvel[80] = 0;   // y
+        d->qvel[81] = 0;   // z
+        d->qvel[82] = 0;      
+        d->qvel[83] = 0;   
+        d->qvel[84] = 0; 
+
+        d->qpos[87] = cup_x_;       // x
+        d->qpos[88] = -cup_y_;   // y
+        d->qpos[89] = cup_z_;   // z
+        d->qvel[85] = 0;       // x
+        d->qvel[86] = 0;   // y
+        d->qvel[87] = 0;   // z
+        d->qvel[88] = 0;       // x
+        d->qvel[89] = 0;   // y
+        d->qvel[90] = 0; 
+
+        // m->geom_rgba[4 * geomIndex + 3] = 0; 
+
+        for (int i = 0; i < 5; ++i) {
+            mj_forward(m, d);
+        }
+        mju_zero(d->xfrc_applied, 6 * m->nbody);
+
+        std::cout << "Updated qpos: "
+            << d->qpos[80] << ", "
+            << d->qpos[81] << ", "
+            << d->qpos[82] << ", "
+            << d->qpos[87] << ", "
+            << d->qpos[88] << ", "
+            << d->qpos[89] <<std::endl;
+
+        std::cout << "After Update geom1: "
+            << d->geom_xpos[3*geomIndex] << ", "
+            << d->geom_xpos[3*geomIndex+1] << ", "
+            << d->geom_xpos[3*geomIndex+2] << ", "
+            << d->geom_xpos[3*geomIndex+3] << ", "
+            << d->geom_xpos[3*geomIndex+4] << ", "
+            << d->geom_xpos[3*geomIndex+5] <<std::endl;
+        
+        std::cout << "After Update geom2: "
+            << d->geom_xpos[3*geomIndex2] << ", "
+            << d->geom_xpos[3*geomIndex2+1] << ", "
+            << d->geom_xpos[3*geomIndex2+2] << ", "
+            << d->geom_xpos[3*geomIndex2+3] << ", "
+            << d->geom_xpos[3*geomIndex2+4] << ", "
+            << d->geom_xpos[3*geomIndex2+5] <<std::endl;
+    }
     else
     {
-        ROS_WARN("NO CUP POS");
+        ROS_WARN("NO Plastic CUP POS");
     }
+
+}
+
+void HaedongCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+    bool haedong_ready = msg->data;
+    std::cout << "haedong callback" << haedong_ready << std::endl;
+    
+    if(haedong_ready)
+    {
+
+        double table_x_ = -0.3;
+        // double table_y_ = 0;
+        // double table_z_ = 0.85;
+
+
+        double cup_x_ = -0.3;
+
+        int table_id = -1;
+        table_id = mj_name2id(m,mjOBJ_BODY,"table_top_body");
+        std::cout << "table_id: " << table_id << std::endl;
+        int cup_id = mj_name2id(m,mjOBJ_BODY,"cup");
+        std::cout << "cup_id: " << cup_id << std::endl;
+
+        int leg1_id = mj_name2id(m, mjOBJ_BODY, "leg1");
+        int leg2_id = mj_name2id(m, mjOBJ_BODY, "leg2");
+        int leg3_id = mj_name2id(m, mjOBJ_BODY, "leg3");
+        int leg4_id = mj_name2id(m, mjOBJ_BODY, "leg4");
+
+        int cupbox_id = mj_name2id(m,mjOBJ_BODY,"cup_box");
+
+        int box_geom_id = mj_name2id(m,mjOBJ_GEOM,"box_geom");
+        int cup_geom_id = mj_name2id(m,mjOBJ_GEOM,"cup_geom");
+        std::cout << "table Callback" << std::endl;
+
+        int tableIndex = m->body_geomadr[table_id];
+        std::cout << "table_index" << tableIndex << std::endl;
+        int cupIndex = m->body_geomadr[cup_id];
+        std::cout << "cup_index: " << cupIndex << std::endl;
+
+         if(cup_id >=0)
+        {
+            d->qpos[3*cupIndex+0] = cup_x_;
+            std::cout<< "cup_x_" << m->body_pos[3*cup_id] << std::endl;
+
+        }
+
+        if(table_id >= 0 )
+        {
+            std::cout<<m->body_pos[3*table_id] <<std::endl;
+            // m->body_pos[3*table_id] = table_x_;
+            m->geom_rgba[4*table_id+3] = 1;
+            m->geom_rgba[4 * leg1_id + 3] = 1; // leg1 투명도 50%
+            m->geom_rgba[4 * leg2_id + 3] = 1; // leg2 투명도 50%
+            m->geom_rgba[4 * leg3_id + 3] = 1; // leg3 투명도 50%
+            m->geom_rgba[4 * leg4_id + 3] = 1; // leg4 투명도 50%
+            // m->geom_contype[table_id] = 1;  // 충돌 타입 활성화
+            // m->geom_conaffinity[table_id] = 1;  // 충돌 연관성 활성화
+            // m->geom_contype[leg1_id] =1;
+            // m->geom_conaffinity[leg1_id]=1;
+            // m->geom_contype[leg2_id] =1;
+            // m->geom_conaffinity[leg2_id]=1;
+            // m->geom_contype[leg3_id] =1;
+            // m->geom_conaffinity[leg3_id]=1;
+            // m->geom_contype[leg4_id] =1;
+            // m->geom_conaffinity[leg4_id]=1;
+
+            // m->geom_contype[cupbox_id] =0;
+            // m->geom_conaffinity[cupbox_id]=0;
+   
+            // m->geom_rgba[4*box_geom_id+3] = 1;
+            // m->geom_rgba[4*cup_geom_id+3] = 1;
+            // std::cout<<m->body_pos[3*table_id] << std::endl;
+        }
+        
+    }
+}
+
+void disableBody()
+{
+    int table_id = mj_name2id(m,mjOBJ_BODY,"table_top_body");
+    m->geom_rgba[4 * table_id + 3] = 0.0;  // alpha (투명도)
 
 }
 
@@ -385,17 +586,20 @@ void state_publisher()
 
         mj_shm_->statusWriting = true;
 
+        // body 
+        //original
         std::copy(d->qpos + 7, d->qpos + 40, mj_shm_->pos);
         std::copy(d->qvel + 6, d->qvel + 39, mj_shm_->vel);
         std::copy(d->qacc + 6, d->qacc + 39, mj_shm_->torqueActual);
 
-        //memcpy(&mj_shm_->pos, &d->qpos[7], m->na * sizeof(float));
-        //memcpy(&mj_shm_->vel, &d->qvel[6], m->na * sizeof(float));
-        //memcpy(&mj_shm_->torqueActual, &d->qacc[6], m->na * sizeof(float));
-
-        //std::copy(d->qpos, d->qpos + 3, mj_shm_->pos_virtual);
-
-        //std::copy(d->qpos + 4, d->qpos + 7, mj_shm_->pos_virtual + 3);
+        // with left hand or only left hand (양팔)
+        std::copy(d->qpos + 7, d->qpos + 30, mj_shm_->pos);
+        std::copy(d->qpos + 50, d->qpos + 60, mj_shm_->pos + 23);
+        std::copy(d->qvel + 6, d->qvel + 29, mj_shm_->vel);
+        std::copy(d->qvel + 49, d->qvel + 59, mj_shm_->vel+23);
+        std::copy(d->qacc + 6, d->qacc + 29, mj_shm_->torqueActual);
+        std::copy(d->qacc + 49, d->qacc + 59, mj_shm_->torqueActual+23);
+        /////////////////////////////////////////
 
         mj_shm_->pos_virtual[0] = d->qpos[0];
         mj_shm_->pos_virtual[1] = d->qpos[1];
@@ -406,9 +610,20 @@ void state_publisher()
         mj_shm_->pos_virtual[6] = d->qpos[3];
 
         if(m->nu != MODEL_DOF){
-            std::copy(d->qpos + 40, d->qpos + 60, mj_shm_->hand_pos);
-            std::copy(d->qvel + 39, d->qvel + 59, mj_shm_->hand_vel);
-            std::copy(d->qacc + 39, d->qacc + 59, mj_shm_->hand_acc);
+            // original (only right hand)
+            // std::copy(d->qpos + 40, d->qpos + 60, mj_shm_->hand_pos);
+            // std::copy(d->qvel + 39, d->qvel + 59, mj_shm_->hand_vel);
+            // std::copy(d->qacc + 39, d->qacc + 59, mj_shm_->hand_acc);
+
+            // with left hand, right hand value (simulation 양팔)
+            std::copy(d->qpos + 60, d->qpos + 80, mj_shm_->hand_pos);
+            std::copy(d->qvel + 59, d->qvel + 79, mj_shm_->hand_vel);
+            std::copy(d->qacc + 59, d->qacc + 79, mj_shm_->hand_acc);
+
+            // // left hand (simulation 양팔)
+            std::copy(d->qpos + 30, d->qpos + 50, mj_shm_->left_hand_pos);
+            std::copy(d->qvel + 29, d->qvel + 49, mj_shm_->left_hand_vel);
+            std::copy(d->qacc + 29, d->qacc + 49, mj_shm_->left_hand_acc);
         }
 
         for (int i = 0; i < m->nsensor; i++)
@@ -487,6 +702,7 @@ void mycontrollerinit()
 {
     ros_sim_started = true;
     sync_time_test = ros::Time::now();
+    m->opt.timestep = 0.002; //(양팔 시뮬레이션 타임)
 }
 void mujoco_ros_connector_init()
 {
@@ -549,7 +765,10 @@ void mujoco_ros_connector_init()
 
 void mycontroller(const mjModel *m, mjData *d)
 {
-    ros::spinOnce();
+    // 작업 시작 시간 기록
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    ros::spinOnce();        // ROS에서 콜백 한번 호출 
 
     if (settings.run)
     {
@@ -567,12 +786,54 @@ void mycontroller(const mjModel *m, mjData *d)
                 }
                 cmd_rcv = true;
                 //std::copy(mj_shm_->torqueCommand, mj_shm_->torqueCommand + m->nu, ctrl_command);
-                for (int i = 0; i < MODEL_DOF; i++)
+
+                // no hand
+                for (int i = 0; i < MODEL_DOF; i++){
                     ctrl_command_temp_[i] = mj_shm_->torqueCommand[i];
-                for (int i = MODEL_DOF; i < m->nu; i++)
-                    ctrl_command_temp_[i] = mj_shm_->handCommand[i-MODEL_DOF];
+                    // std::cout<<"ctrl_command_torque: "<< mj_shm_->torqueCommand[i] << std::endl;
+                }
+                // only right hand
+                // for (int i = 0; i < MODEL_DOF; i++){
+                //     ctrl_command_temp_[i] = mj_shm_->torqueCommand[i];
+                //     // std::cout<<"ctrl_command_torque: "<< mj_shm_->torqueCommand[i] << std::endl;
+                // }
+                // for (int i = MODEL_DOF; i < m->nu; i++){
+                //     ctrl_command_temp_[i] = mj_shm_->handCommand[i-MODEL_DOF];
+                //     // std::cout<<"hand_command_torque: "<< mj_shm_->handCommand[i-MODEL_DOF] << std::endl;
+                // }
+
+                // with left hand + right hand (simulation 양팔)
+                for (int i = 0; i < MODEL_DOF; i++){
+                    ctrl_command_temp_[i] = mj_shm_->torqueCommand[i];
+                    // std::cout<<"ctrl_command_torque: "<< mj_shm_->torqueCommand[i] << std::endl;
+                }
+                for (int i = MODEL_DOF; i <(MODEL_DOF+HAND_DOF); i++){
+                    ctrl_command_temp_[i] = mj_shm_->left_handCommand[i-MODEL_DOF];
+                    // std::cout<<"left_command_torque[" << i << "]: "<< mj_shm_->left_handCommand[i-MODEL_DOF] << std::endl;
+                }
+                for (int i = (MODEL_DOF+HAND_DOF); i < m->nu; i++){
+                    ctrl_command_temp_[i] = mj_shm_->handCommand[i-(MODEL_DOF+HAND_DOF)];
+                    // std::cout<<"hand_command_torque[" << i << "]: "<< mj_shm_->left_handCommand[i-53] << std::endl;
+                }
+
+                // only left hand
+                // for (int i = 0; i < MODEL_DOF; i++){
+                //     ctrl_command_temp_[i] = mj_shm_->torqueCommand[i];
+                //     // std::cout<<"ctrl_command_torque: "<< mj_shm_->torqueCommand[i] << std::endl;
+                // }
+                // for (int i = MODEL_DOF; i <(MODEL_DOF+HAND_DOF); i++){
+                //     ctrl_command_temp_[i] = mj_shm_->left_handCommand[i-MODEL_DOF];
+                //     // std::cout<<"hand_command_torque: "<< mj_shm_->handCommand[i-MODEL_DOF] << std::endl;
+                // }
+
+                ////////////////////////////////////////
                 // for (int i = 0; i < m->nu; i++)
                 //     ctrl_command_temp_[i] = mj_shm_->handCommand[i];
+
+                // std::cout<< "m->nu size: " << m->nu <<std::endl;
+                // std::cout << "Number of joints (m->njnt): " << m->njnt << std::endl;
+                // std::cout << "Size of qpos (m->nq): " << m->nq << std::endl;
+                // std::cout << "Size of qvel (m->nv): " << m->nv << std::endl;
 #else
                 std::cout << "WARNING : Getting command, while SHM_NOT_COMPILED " << std::endl;
 #endif
@@ -599,10 +860,12 @@ void mycontroller(const mjModel *m, mjData *d)
             {
                 if (cmd_rcv)
                 {
-                    mju_copy(d->ctrl, ctrl_command, m->nu);
+                    // std::cout << "cmd_rcv" << std::endl;    // 적용
+                    mju_copy(d->ctrl, ctrl_command, m->nu);     // ctrl_command 배열에서 0부터 시작하는 m->nu 개의 데이터를 d->ctrl로 복사 
                 }
                 if (custom_ft_applied)
-                {
+                {   
+                    // std::cout << "custorm_ft_applied" << std::endl; 적용 안됨
                     mju_copy(d->xfrc_applied, ctrl_command2, m->nbody * 6);
                 }
             }
@@ -633,6 +896,7 @@ void mycontroller(const mjModel *m, mjData *d)
 
             t_before = rt_now;
         }
+
     }
     //ros::V_string temp;
     //ros::master::getNodes(temp);
@@ -640,6 +904,13 @@ void mycontroller(const mjModel *m, mjData *d)
     //ROS_INFO("mycon :: time %f ", d->time);
     //for (int i = 0; i < temp.size(); i++)
     //    std::cout << temp[i] << std::endl;
+
+    // 작업 종료 시간 기록
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    // 작업에 걸린 시간 계산
+    std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;
+    // std::cout << "mycontroller 실행 시간: " << elapsed_time.count() << " ms" << std::endl;
 }
 
 //----------------------- profiler, sensor, info, watch ---------------------------------
@@ -2176,12 +2447,37 @@ void render(GLFWwindow *window)
     glfwSwapBuffers(window);
 }
 
+// bool positionupdate = false;
+// void updatePositionAtSpecificTime(mjData *d, double targetTime) {
+//     if (d->time >= targetTime && !positionupdate) {  // 특정 시간이 되었을 때
+//         d->qpos[53] = 0.4; // 원하는 값을 qpos에 할당
+//         std::cout << "Updated d->qpos[55] to 0.4 at time " << d->time << std::endl;
+//         positionupdate= true;
+//     }
+// }
+
+// double desiredQpos = 0.0;
+// bool updateRequest = false;
+// // std::mutex mtx;
+
+// void qposCallback(const std_msgs::Float32::ConstPtr& msg){
+//     // std::lock_guard<std::mutex> lock(mtx);
+//     desiredQpos = msg->data;
+//     updateRequest = true;
+//     ROS_INFO("Received desired qpos[53]: %f", desiredQpos);
+// }
+
 // simulate in background thread (while rendering in main thread)
 void simulate(void)
 {
     // cpu-sim syncronization point
     double cpusync = 0;
     mjtNum simsync = 0;
+    double targetTime = 30.0;
+
+    // Ros node와 subscriber
+    // ros::NodeHandle nh;
+    // ros::Subscriber qposSub = nh.subscribe("/desired_qpos",10,qposCallback);
 
     // run until asked to exit
     while ((!settings.exitrequest) && ros::ok())
@@ -2201,8 +2497,8 @@ void simulate(void)
         {
             // record start time
             double startwalltm = ros::Time::now().toSec();
-
             // running
+
             if (settings.run)
             {
                 if (settings.debug)
@@ -2211,7 +2507,14 @@ void simulate(void)
                 }
                 // record cpu time at start of iteration
                 double tmstart = ros::Time::now().toSec();
+                // updatePositionAtSpecificTime(d, targetTime);
 
+                // if (updateRequest){
+                //     d->qpos[53] = desiredQpos;  
+                //     ROS_INFO("Updated d->qpos[53] to %f", desiredQpos);
+                //     // updateRequest = false;    // 업데이트 완료 후 플래그 리셋
+                // }
+                
                 // out-of-sync (for any reason)
                 if (d->time < simsync || tmstart < cpusync || cpusync == 0 ||
                     mju_abs((d->time - simsync) - (tmstart - cpusync)) > syncmisalign)
@@ -2361,4 +2664,5 @@ void init()
     mjui_add(&ui1, defWatch);
     uiModify(window, &ui0, &uistate, &con);
     uiModify(window, &ui1, &uistate, &con);
+    // disableBody():
 }

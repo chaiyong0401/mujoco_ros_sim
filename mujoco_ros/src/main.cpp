@@ -99,9 +99,12 @@ void loadmodel(void)
 
     if (m->actuator_biastype[0])
     {
+        // std::cout<< "actuator_biastype" << std::endl; // 작동 안함 
         mju_copy(d->ctrl, m->key_qpos + 7 + i * m->nq, m->nu);
     }
 
+    // std::cout <<"check" <<std::endl;
+    // sleep(10);
     mj_forward(m, d);
 
     ros_sim_started = true;
@@ -146,7 +149,8 @@ void loadmodel(void)
 void RGBD_sensor(mjModel* model, mjData* data)
 {
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-  GLFWwindow* window = glfwCreateWindow(640, 480, "Camera", NULL, NULL);
+//   GLFWwindow* window = glfwCreateWindow(640, 480, "Camera", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(1280, 960, "Camera", NULL, NULL);
   // glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
@@ -268,7 +272,7 @@ void RGBD_sensor(mjModel* model, mjData* data)
     // process pending GUI events, call GLFW callbacks
     glfwPollEvents();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10)); ///////    카메라 시간 변경
 
     // Do not forget to release buffer to avoid memory leak
     mj_RGBD.release_buffer();
@@ -304,6 +308,10 @@ int main(int argc, char **argv)
 
     cup_pos_pub = nh.advertise<geometry_msgs::Point>("/cup_pos", 1);
     new_cup_pos_sub = nh.subscribe<geometry_msgs::Point>("/new_cup_pos", 1, NewCupPosCallback);
+    haedong_check_sub = nh.subscribe<std_msgs::Bool>("/haedong_check",1, HaedongCallback);
+    new_cup_pos_mcy_sub = nh.subscribe<geometry_msgs::Point>("/new_cup_pos_mcy", 1, NewCupPosmcyCallback);
+    // qpos_sub = nh.subscribe<std_msgs::Float32>("/desired_qpos",1, qposCallback);
+   
 
     if (!use_shm)
     {
@@ -353,6 +361,7 @@ int main(int argc, char **argv)
     else
     {
 #ifdef COMPILE_SHAREDMEMORY
+        std::cout<< "init_shm in mujoco_ros main.cpp" << std::endl;
         init_shm(shm_msg_key, shm_msg_id, &mj_shm_);
 #endif
     }

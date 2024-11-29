@@ -22,6 +22,7 @@
 
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Bool.h>
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Point.h>
@@ -92,6 +93,7 @@ struct setting_
     int sensor = 0;
     int fullscreen = 0;
     int vsync = 1;
+    // int vsync = 0;
     int busywait = 1;
     int realtime = 0;
     int debug = 0;
@@ -250,6 +252,7 @@ const char help_title[] =
 char info_title[1000];
 char info_content[1000];
 
+
 void profilerinit(void);
 void profilerupdate(void);
 void profilershow(mjrRect rect);
@@ -280,6 +283,7 @@ void render(GLFWwindow *window);
 void simulate(void);
 void init();
 void rosPollEvents();
+void disableBody();
 
 std::mutex mtx;
 
@@ -292,6 +296,9 @@ ros::Subscriber sim_command_sub;
 ros::Publisher sim_command_pub;
 ros::Publisher sim_status_pub;
 ros::Subscriber new_cup_pos_sub;
+ros::Subscriber haedong_check_sub;
+ros::Subscriber qpos_sub;
+ros::Subscriber new_cup_pos_mcy_sub;
 // ros::Publisher cup_pos_pub;
 
 //mujoco_ros_msgs::JointState joint_state_msg_;
@@ -370,5 +377,8 @@ void state_publisher();
 void mujoco_ros_connector_init();
 void mycontroller(const mjModel *m, mjData *d);
 void NewCupPosCallback(const geometry_msgs::PointConstPtr &msg);
+void HaedongCallback(const std_msgs::Bool::ConstPtr &msg);
+void NewCupPosmcyCallback(const geometry_msgs::PointConstPtr &msg);
+// void qposCallback(const std_msgs::Float32::ConstPtr &msg);
 
 #endif
